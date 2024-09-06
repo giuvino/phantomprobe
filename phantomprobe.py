@@ -33,7 +33,16 @@ def load_api_keys():
     if not all([SHODAN_API_KEY, GITHUB_API_KEY, HIBP_API_KEY]):
         print("Warning: One or more API keys are missing. Some functionality may be limited.")
 
-
+def display_banner():
+    banner = r"""
+     ▒█▀▀█ █░░█ █▀▀█ █▀▀▄ ▀▀█▀▀ █▀▀█ █▀▄▀█ ▒█▀▀█ █▀▀█ █▀▀█ █▀▀▄ █▀▀
+     ▒█▄▄█ █▀▀█ █▄▄█ █░░█ ░░█░░ █░░█ █░▀░█ ▒█▄▄█ █▄▄▀ █░░█ █▀▀▄ █▀▀
+     ▒█░░░ ▀░░▀ ▀░░▀ ▀░░▀ ░░▀░░ ▀▀▀▀ ▀░░░▀ ▒█░░░ ▀░▀▀ ▀▀▀▀ ▀▀▀░ ▀▀▀
+                                                                      
+           Passive Reconnaissance and Information Gathering Tool
+    """
+    print(banner)
+    print("\nInitializing PhantomProbe...\n")
 
 def run_command(command: List[str]) -> str:
     """Run a shell command and return its output."""
@@ -759,13 +768,15 @@ def generate_report(domain: str, subdomain_data: List[Dict[str, any]]) -> None:
     print("\nFull details are available in the JSON report.")
 
 def main():
+    display_banner()
     load_api_keys()
     domain = input("Enter the target domain: ")
-    print(f"Starting passive reconnaissance for {domain}...")
+    print(f"\nStarting passive reconnaissance for {domain}...")
     subdomains = enumerate_subdomains(domain)
     print(f"Found {len(subdomains)} unique subdomains. Gathering additional information...")
     subdomain_data = process_subdomains(domain, subdomains)
     generate_report(domain, subdomain_data)
+
 
 
 if __name__ == "__main__":
