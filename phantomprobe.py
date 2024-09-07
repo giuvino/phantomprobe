@@ -12,25 +12,24 @@ from github import Github
 import shodan
 import re
 from urllib.parse import urlparse, urljoin
+import dns.reversename
 import time
 import ipaddress
+import base64
 
 # You'll need to install these libraries:
 # pip install dnspython python-whois PyGithub shodan requests
 
 # Replace with your actual API keys
-SHODAN_API_KEY = "your_shodan_api_key"
-GITHUB_API_KEY = "your_github_api_key"
-HIBP_API_KEY = "your_haveibeenpwned_api_key"
-
+SHODAN_API_KEY = "insert_your_key"
+GITHUB_API_KEY = "insert_your_key"
 
 def load_api_keys():
-    global SHODAN_API_KEY, GITHUB_API_KEY, HIBP_API_KEY
+    global SHODAN_API_KEY, GITHUB_API_KEY
     SHODAN_API_KEY = os.getenv("SHODAN_API_KEY")
     GITHUB_API_KEY = os.getenv("GITHUB_API_KEY")
-    HIBP_API_KEY = os.getenv("HIBP_API_KEY")
     
-    if not all([SHODAN_API_KEY, GITHUB_API_KEY, HIBP_API_KEY]):
+    if not all([SHODAN_API_KEY, GITHUB_API_KEY]):
         print("Warning: One or more API keys are missing. Some functionality may be limited.")
 
 def display_banner():
@@ -50,10 +49,36 @@ def run_command(command: List[str]) -> str:
     return result.stdout
 
 def passive_dns(domain: str) -> Set[str]:
-    """Run passivedns in passive mode."""
-    # Replace with actual passive mode command for passivedns
-    output = run_command(["passivedns", "--passive", domain])
-    return set(output.splitlines())
+    """Perform passive DNS enumeration using DNS queries."""
+    subdomains = set()
+    
+    # Try to get NS records
+    try:
+        ns_records = dns.resolver.resolve(domain, 'NS')
+        for ns in ns_records:
+            subdomains.add(str(ns).rstrip('.'))
+    except dns.exception.DNSException:
+        pass
+
+    # Try to get MX records
+    try:
+        mx_records = dns.resolver.resolve(domain, 'MX')
+        for mx in mx_records:
+            subdomains.add(str(mx.exchange).rstrip('.'))
+    except dns.exception.DNSException:
+        pass
+
+    # Try to get TXT records
+    try:
+        txt_records = dns.resolver.resolve(domain, 'TXT')
+        for txt in txt_records:
+            # Look for subdomains in TXT records
+            potential_subdomains = re.findall(r'([a-zA-Z0-9_-]+\.{})'.format(domain), str(txt))
+            subdomains.update(potential_subdomains)
+    except dns.exception.DNSException:
+        pass
+
+    return subdomains
 
 def amass(domain: str) -> Set[str]:
     """Run amass in passive mode."""
@@ -186,7 +211,26 @@ def check_shodan(ip: str) -> Dict[str, any]:
     except shodan.APIError:
         return {}
 
+def fingerprint_web_application(headers: Dict[str, str], html_content: str = "") -> Dict[str, str]:
+    """Fingerprint web application based on HTTP headers and HTML content."""
+    fingerprints = {}
 
+    # Header-based fingerprinting
+    header_patterns = {
+        "Server": {
+            "Apache": r"Apache/?([0-9.]*)",
+            "Nginx": r"nginx/?([0-9.]*)",
+            "IIS": r"Microsoft-IIS/([0-9.]*)",
+            "LiteSpeed": r"LiteSpeed/?([0-9.]*)",
+        },
+        "X-Powered-By": {
+            "PHP": r"PHP/([0-9.]*)",
+            "ASP.NET": r"ASP\.NET",
+        },
+        "X-AspNet-Version": {
+            ".NET Framework": r"([0-9.]*)",
+        },
+    }
 
     for header, patterns in header_patterns.items():
         if header.lower() in headers:
@@ -239,7 +283,11 @@ def check_shodan(ip: str) -> Dict[str, any]:
     if re.search(r"gatsby", html_content, re.IGNORECASE):
         fingerprints["Gatsby"] = "Detected"
 
+    vulnerable_libs = check_vulnerable_js_libraries(html_content)
+    fingerprints.update(vulnerable_libs)
+
     return fingerprints
+
 
 def passive_content_discovery(url: str, html_content: str, headers: Dict[str, str]) -> Set[str]:
     """Perform passive content discovery based on HTML content and headers."""
@@ -491,11 +539,16 @@ def get_ssl_info(domain: str) -> Dict[str, any]:
     }
     
     try:
-        response = requests.get(base_url, params=payload)
+        response = requests.get(base_url, params=payload, timeout=10)
+        response.raise_for_status()  # Raises an HTTPError for bad responses
         data = response.json()
         
+        # Check if we have valid data
+        if 'status' not in data:
+            return {"error": "Unexpected API response format"}
+        
         # Check if we have cached results
-        if data['status'] != 'READY' and data['status'] != 'ERROR':
+        if data['status'] not in ['READY', 'ERROR']:
             return {"error": "No cached results available"}
         
         if 'endpoints' not in data or not data['endpoints']:
@@ -517,15 +570,14 @@ def get_ssl_info(domain: str) -> Dict[str, any]:
                 "drownVulnerable": endpoint.get('details', {}).get('drownVulnerable', False)
             }
         }
-    except RequestException:
-        return {"error": "Failed to retrieve SSL information"}
+    except requests.RequestException as e:
+        return {"error": f"Failed to retrieve SSL information: {str(e)}"}
 
 def check_data_breaches(domain: str) -> Dict[str, any]:
-    """Check for data breaches associated with the domain using HIBP API."""
+    """Check if the domain has appeared in known data breaches using HIBP's domain search."""
     url = f"https://haveibeenpwned.com/api/v3/breaches"
     headers = {
-        "hibp-api-key": HIBP_API_KEY,
-        "User-Agent": "PassiveReconScript"
+        "User-Agent": "PhantomProbe-OSINT-Tool"
     }
     
     try:
@@ -543,7 +595,6 @@ def check_data_breaches(domain: str) -> Dict[str, any]:
                     {
                         "name": breach['Name'],
                         "date": breach['BreachDate'],
-                        "pwn_count": breach['PwnCount'],
                         "description": breach['Description']
                     }
                     for breach in domain_breaches
@@ -663,8 +714,18 @@ def resolve_and_analyze_subdomain(subdomain: str, parent_domain: str) -> Dict[st
 
 def process_subdomains(domain: str, subdomains: Set[str]) -> List[Dict[str, any]]:
     """Process all subdomains: resolve IP and gather information."""
+    def safe_resolve_and_analyze(subdomain):
+        try:
+            return resolve_and_analyze_subdomain(subdomain, domain)
+        except Exception as e:
+            print(f"Error processing subdomain {subdomain}: {str(e)}")
+            return {
+                "subdomain": subdomain,
+                "error": str(e)
+            }
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-        results = list(executor.map(lambda s: resolve_and_analyze_subdomain(s, domain), subdomains))
+        results = list(executor.map(safe_resolve_and_analyze, subdomains))
     return results
 
 def generate_report(domain: str, subdomain_data: List[Dict[str, any]]) -> None:
@@ -746,10 +807,11 @@ def generate_report(domain: str, subdomain_data: List[Dict[str, any]]) -> None:
             print(f"  Error checking data breaches: {breach_info['error']}")
         else:
             print(f"  Total breaches found: {breach_info.get('total_breaches', 0)}")
-            for breach in breach_info.get('breaches', []):
+            for breach in breach_info.get('breaches', [])[:5]:  # Limit to first 5 for brevity
                 print(f"    - {breach['name']} ({breach['date']}):")
-                print(f"      Affected accounts: {breach['pwn_count']}")
                 print(f"      Description: {breach['description'][:100]}...")  # Truncate for brevity
+            if len(breach_info.get('breaches', [])) > 5:
+                print(f"      ... and {len(breach_info['breaches']) - 5} more")
     else:
         print("  No data breach information available")
     
