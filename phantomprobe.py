@@ -24,8 +24,8 @@ from visualize_report import create_visual_report  # Import the visualization fu
 # pip install dnspython python-whois PyGithub shodan requests
 
 # Replace with your actual API keys
-SHODAN_API_KEY = "insert_your_key"
-GITHUB_API_KEY = "insert_your_key"
+SHODAN_API_KEY = "your_api_key"
+GITHUB_API_KEY = "your_api_key"
 
 def load_api_keys():
     global SHODAN_API_KEY, GITHUB_API_KEY
@@ -731,7 +731,7 @@ def process_subdomains(domain: str, subdomains: Set[str]) -> List[Dict[str, any]
         results = list(executor.map(safe_resolve_and_analyze, subdomains))
     return results
 
-def generate_report(domain: str, subdomain_data: List[Dict[str, any]]) -> None:
+def generate_report(domain: str, subdomain_data: List[Dict[str, any]]) -> str:
     """Generate a comprehensive report of subdomain analysis."""
     whois_info = get_whois_info(domain)
     github_repos = search_github(domain)
@@ -744,10 +744,11 @@ def generate_report(domain: str, subdomain_data: List[Dict[str, any]]) -> None:
         "subdomains": subdomain_data
     }
     
-    with open(f"{domain}_passive_recon_report.json", "w") as f:
+    report_filename = f"{domain}_passive_recon_report.json"
+    with open(report_filename, "w") as f:
         json.dump(report, f, indent=2)
     
-    print(f"Comprehensive passive reconnaissance report generated: {domain}_passive_recon_report.json")
+    print(f"Comprehensive passive reconnaissance report generated: {report_filename}")
     
     # Display a summary in the console
     print(f"\nPassive Reconnaissance Summary for {domain}:")
@@ -831,6 +832,7 @@ def generate_report(domain: str, subdomain_data: List[Dict[str, any]]) -> None:
                 print(f"      ... and {len(discovered_content) - 5} more")
     
     print("\nFull details are available in the JSON report.")
+    return report_filename
 
 def main():
     parser = argparse.ArgumentParser(description="PhantomProbe: Advanced Passive Reconnaissance Tool")
@@ -848,7 +850,9 @@ def main():
 
     if args.visualize:
         print("Generating visual report...")
-        create_visual_report(json.loads(open(report_file).read()))
+        with open(report_file, 'r') as f:
+            report_data = json.load(f)
+        create_visual_report(report_data)
 
 if __name__ == "__main__":
     main()
