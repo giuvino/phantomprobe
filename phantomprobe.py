@@ -59,7 +59,9 @@ def passive_dns(domain: str) -> Set[str]:
     try:
         ns_records = dns.resolver.resolve(domain, 'NS')
         for ns in ns_records:
-            subdomains.add(str(ns).rstrip('.'))
+            ns_domain = str(ns).rstrip('.')
+            if ns_domain.endswith(domain):
+                subdomains.add(ns_domain)
     except dns.exception.DNSException:
         pass
 
@@ -67,7 +69,9 @@ def passive_dns(domain: str) -> Set[str]:
     try:
         mx_records = dns.resolver.resolve(domain, 'MX')
         for mx in mx_records:
-            subdomains.add(str(mx.exchange).rstrip('.'))
+            mx_domain = str(mx.exchange).rstrip('.')
+            if mx_domain.endswith(domain):
+                subdomains.add(mx_domain)
     except dns.exception.DNSException:
         pass
 
@@ -76,7 +80,7 @@ def passive_dns(domain: str) -> Set[str]:
         txt_records = dns.resolver.resolve(domain, 'TXT')
         for txt in txt_records:
             # Look for subdomains in TXT records
-            potential_subdomains = re.findall(r'([a-zA-Z0-9_-]+\.{})'.format(domain), str(txt))
+            potential_subdomains = re.findall(r'([a-zA-Z0-9_-]+\.{})'.format(re.escape(domain)), str(txt))
             subdomains.update(potential_subdomains)
     except dns.exception.DNSException:
         pass
@@ -135,27 +139,6 @@ def analyze_headers(headers: Dict[str, str]) -> Dict[str, str]:
         if header.lower() in headers:
             interesting_headers[header] = headers[header.lower()]
     return interesting_headers
-
-def fingerprint_web_application(headers: Dict[str, str], html_content: str = "") -> Dict[str, str]:
-    """Fingerprint web application based on HTTP headers and HTML content."""
-    fingerprints = {}
-
-    # Header-based fingerprinting
-    header_patterns = {
-        "Server": {
-            "Apache": r"Apache/?([0-9.]*)",
-            "Nginx": r"nginx/?([0-9.]*)",
-            "IIS": r"Microsoft-IIS/([0-9.]*)",
-            "LiteSpeed": r"LiteSpeed/?([0-9.]*)",
-        },
-        "X-Powered-By": {
-            "PHP": r"PHP/([0-9.]*)",
-            "ASP.NET": r"ASP\.NET",
-        },
-        "X-AspNet-Version": {
-            ".NET Framework": r"([0-9.]*)",
-        },
-    }
 
 def analyze_email_security(domain: str, dns_records: Dict[str, List[str]]) -> Dict[str, any]:
     """Analyze email security based on DNS records."""
@@ -639,6 +622,8 @@ def check_http_response(url: str) -> Dict[str, any]:
 
 def resolve_and_analyze_subdomain(subdomain: str, parent_domain: str) -> Dict[str, any]:
     """Resolve IP address and gather information for a given subdomain."""
+    if not subdomain.endswith(parent_domain):
+        return None  # Skip this if it's not actually a subdomain
     try:
         ip = socket.gethostbyname(subdomain)
         http_response = check_http_response(f"http://{subdomain}")
@@ -719,17 +704,15 @@ def process_subdomains(domain: str, subdomains: Set[str]) -> List[Dict[str, any]
     """Process all subdomains: resolve IP and gather information."""
     def safe_resolve_and_analyze(subdomain):
         try:
-            return resolve_and_analyze_subdomain(subdomain, domain)
+            result = resolve_and_analyze_subdomain(subdomain, domain)
+            return result if result is not None else None
         except Exception as e:
             print(f"Error processing subdomain {subdomain}: {str(e)}")
-            return {
-                "subdomain": subdomain,
-                "error": str(e)
-            }
+            return None
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
         results = list(executor.map(safe_resolve_and_analyze, subdomains))
-    return results
+    return [r for r in results if r is not None]
 
 def generate_report(domain: str, subdomain_data: List[Dict[str, any]]) -> str:
     """Generate a comprehensive report of subdomain analysis."""
