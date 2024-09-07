@@ -98,7 +98,7 @@ def subfinder(domain: str) -> Set[str]:
 def bbot(domain: str) -> Set[str]:
     """Run bbot in passive mode."""
     # Replace with actual passive mode command for bbot
-    output = run_command(["bbot", "-t", domain, "--passive"])
+    output = run_command(["bbot", "-t", domain, "-f subdomain-enum" "-rf passive"])
     return set(output.splitlines())
 
 def enumerate_subdomains(domain: str) -> Set[str]:
