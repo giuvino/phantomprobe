@@ -49,7 +49,7 @@ PhantomProbe requires the following Python libraries:
 - requests
 
 Install these dependencies using pip:
-`pip install dnspython python-whois PyGithub shodan requests`
+`pip install -r requirements.txt`
 
 ## API Keys Required
 
