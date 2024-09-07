@@ -2,7 +2,7 @@
 
 PhantomProbe is a comprehensive passive reconnaissance and information gathering tool designed for cybersecurity professionals, penetration testers, and ethical hackers. It performs in-depth analysis of target domains without actively interacting with their systems, ensuring stealthy and non-intrusive intelligence collection.
 
-<img width="752" alt="image" src="https://github.com/user-attachments/assets/2e2a49a0-ed7b-427d-b8bd-d352788265af">
+<img width="752" alt="image" src="https://github.com/user-attachments/assets/63f10b34-462c-4070-8a29-c29159d90f22">
 
 ## Key Features
 
@@ -38,10 +38,10 @@ PhantomProbe collects a wide range of information, including but not limited to:
 - Domain registration and expiration details
 - Associated public GitHub repositories
 
-<img src="https://github.com/user-attachments/assets/94c187fd-882a-4d3f-9693-d76423a8480e" width="400">
-<img src="https://github.com/user-attachments/assets/5d263e34-93eb-4b3a-937d-4bd094d4706c" width="400">
-<img src="https://github.com/user-attachments/assets/33f56289-82d7-4bfc-940e-5088c04e823f" width="400">
-<img src="https://github.com/user-attachments/assets/168a1923-1793-42cc-aa64-31445d257840" width="400">
+<img src="https://github.com/user-attachments/assets/d3203fc3-7b7c-4276-8c59-f151300fa92c" width="400">
+<img src="https://github.com/user-attachments/assets/8d8a27f4-4f9f-4d06-bccf-22edaeb091a3" width="400">
+<img src="https://github.com/user-attachments/assets/31da78d5-d3f8-455e-94ee-5dcf33707750" width="400">
+<img src="https://github.com/user-attachments/assets/901d7f8e-74b0-448e-ba5b-b8f6fccf7139" width="400">
 
 ## Dependencies
 
