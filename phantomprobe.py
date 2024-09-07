@@ -16,6 +16,9 @@ import dns.reversename
 import time
 import ipaddress
 import base64
+import argparse
+from visualize_report import create_visual_report  # Import the visualization function
+
 
 # You'll need to install these libraries:
 # pip install dnspython python-whois PyGithub shodan requests
@@ -830,6 +833,10 @@ def generate_report(domain: str, subdomain_data: List[Dict[str, any]]) -> None:
     print("\nFull details are available in the JSON report.")
 
 def main():
+    parser = argparse.ArgumentParser(description="PhantomProbe: Advanced Passive Reconnaissance Tool")
+    parser.add_argument("--visualize", action="store_true", help="Generate a visual report")
+    args = parser.parse_args()
+
     display_banner()
     load_api_keys()
     domain = input("Enter the target domain: ")
@@ -837,9 +844,11 @@ def main():
     subdomains = enumerate_subdomains(domain)
     print(f"Found {len(subdomains)} unique subdomains. Gathering additional information...")
     subdomain_data = process_subdomains(domain, subdomains)
-    generate_report(domain, subdomain_data)
+    report_file = generate_report(domain, subdomain_data)
 
-
+    if args.visualize:
+        print("Generating visual report...")
+        create_visual_report(json.loads(open(report_file).read()))
 
 if __name__ == "__main__":
     main()
