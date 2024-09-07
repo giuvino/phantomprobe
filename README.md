@@ -38,9 +38,10 @@ PhantomProbe collects a wide range of information, including but not limited to:
 - Domain registration and expiration details
 - Associated public GitHub repositories
 
-![evilcorp com_domain_structure](https://github.com/user-attachments/assets/b645068a-0e5a-442b-8af6-5a73a5ed963b)
-![evilcorp com_visual_report](https://github.com/user-attachments/assets/a00bf827-4d64-4a36-b86a-a3ad489b677d)
-
+<img src="https://github.com/user-attachments/assets/94c187fd-882a-4d3f-9693-d76423a8480e" width="500">
+<img src="https://github.com/user-attachments/assets/5d263e34-93eb-4b3a-937d-4bd094d4706c" width="500">
+<img src="https://github.com/user-attachments/assets/33f56289-82d7-4bfc-940e-5088c04e823f" width="500">
+<img src="https://github.com/user-attachments/assets/168a1923-1793-42cc-aa64-31445d257840" width="500">
 
 ## Dependencies
 
